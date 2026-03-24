@@ -2,7 +2,7 @@
 
 A World of Warcraft (1.12 / Turtle WoW) addon that celebrates your level-ups with animated stat gains and skill unlock notifications.
 
-(https://i.imgur.com/V0APuOV.png)
+![NextLevel in action](https://i.imgur.com/V0APuOV.png)
 
 ## Features
 
