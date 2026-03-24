@@ -2,9 +2,7 @@
 
 A World of Warcraft (1.12 / Turtle WoW) addon that celebrates your level-ups with animated stat gains and skill unlock notifications.
 
-<video width="600" controls>
-  <source src="NextLevel.mp4" type="video/mp4">
-</video>
+![NextLevel in action](NextLevel.gif)
 
 ## Features
 
@@ -16,7 +14,7 @@ A World of Warcraft (1.12 / Turtle WoW) addon that celebrates your level-ups wit
 
 ## Installation
 
-1. Download the latest release from [GitHub Releases](https://github.com/yourusername/NextLevel/releases) (or clone the repository).
+1. Download the latest release from [GitHub Releases](https://github.com/Misa5919/NextLevel).
 2. Extract the folder into your `World of Warcraft/Interface/AddOns/` directory.
 3. Make sure the folder is named exactly `NextLevel`.
 4. Launch the game and enable the addon in the character selection screen.
@@ -48,4 +46,4 @@ This addon is released under the MIT License. See the `LICENSE` file for details
 
 ## Support
 
-If you encounter any bugs or have suggestions, please [open an issue](https://github.com/yourusername/NextLevel/issues) on GitHub.
+If you encounter any bugs or have suggestions, please [open an issue](https://github.com/Misa5919/NextLevel/issues) on GitHub.
