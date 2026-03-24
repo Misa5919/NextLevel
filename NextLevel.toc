@@ -1,5 +1,5 @@
 ## Interface: 11200
-## Title: NextLevel
+## Title: |cFFFFD700Next|rLevel
 ## Notes: Improved Level-up for some dopamine hits.
 ## SavedVariables: NextLevel_TrainerDB
 
