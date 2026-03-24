@@ -42,31 +42,55 @@ local _, playerClass = UnitClass("player")
 if not NextLevel_TrainerDB then NextLevel_TrainerDB = {} end
 
 local function ScanTrainer()
-    local fAv = GetTrainerServiceTypeFilter("available") or 1
-    local fUn = GetTrainerServiceTypeFilter("unavailable") or 1
-    local fUs = GetTrainerServiceTypeFilter("used") or 1
-    SetTrainerServiceTypeFilter("available",1); SetTrainerServiceTypeFilter("unavailable",1); SetTrainerServiceTypeFilter("used",1)
+    -- Store current filter states (returns 1 if enabled, nil if disabled)
+    local fAv = GetTrainerServiceTypeFilter("available")
+    local fUn = GetTrainerServiceTypeFilter("unavailable")
+    local fUs = GetTrainerServiceTypeFilter("used")
+    
+    -- Enable all filters temporarily to see every skill
+    SetTrainerServiceTypeFilter("available", 1)
+    SetTrainerServiceTypeFilter("unavailable", 1)
+    SetTrainerServiceTypeFilter("used", 1)
+    
+    -- Force trainer to rebuild its list with all filters on
     ExpandTrainerSkillLine(0)
+    
     local num = GetNumTrainerServices()
     if num and num > 0 then
         local classDB = NextLevel_TrainerDB[playerClass] or {}
         NextLevel_TrainerDB[playerClass] = classDB
-        for i=1,num do
-            local name, sub, st, _,_,_,_,_,_,_, isTrade = GetTrainerServiceInfo(i)
+        for i = 1, num do
+            local name, sub, st, _, _, _, _, _, _, _, isTrade = GetTrainerServiceInfo(i)
             local req = GetTrainerServiceLevelReq(i)
             local icon = GetTrainerServiceIcon(i)
-            if st~="header" and st~="used" and not isTrade and name and req then
+            if st ~= "header" and st ~= "used" and not isTrade and name and req then
                 req = tonumber(req)
                 local levelList = classDB[req] or {}
                 classDB[req] = levelList
-                local full = sub and sub~="" and (name.." ("..sub..")") or name
+                local full = sub and sub ~= "" and (name .. " (" .. sub .. ")") or name
                 local exists = false
-                for _,e in ipairs(levelList) do if e.name==full then exists=true break end end
-                if not exists then tinsert(levelList, { name=full, icon=icon }) end
+                for _, e in ipairs(levelList) do
+                    if e.name == full then exists = true; break end
+                end
+                if not exists then
+                    tinsert(levelList, { name = full, icon = icon })
+                end
             end
         end
     end
-    SetTrainerServiceTypeFilter("available",fAv); SetTrainerServiceTypeFilter("unavailable",fUn); SetTrainerServiceTypeFilter("used",fUs)
+    
+    -- Restore original filter states (use 0 for disabled, 1 for enabled)
+    SetTrainerServiceTypeFilter("available", fAv and 1 or 0)
+    SetTrainerServiceTypeFilter("unavailable", fUn and 1 or 0)
+    SetTrainerServiceTypeFilter("used", fUs and 1 or 0)
+    
+    -- Force trainer to rebuild its list with restored filters
+    ExpandTrainerSkillLine(0)
+    
+    -- Tell the trainer frame to update its UI (Vanilla 1.12)
+    if TrainerFrame and TrainerFrame_Update then
+        TrainerFrame_Update()
+    end
 end
 
 --[[-----------------------------------------------------------------------------
