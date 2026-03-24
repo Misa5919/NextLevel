@@ -7,13 +7,13 @@ local tinsert, tremove, tlen = table.insert, table.remove, table.getn
 local ipairs, pairs = ipairs, pairs
 
 local GOLD, WHITE, GREEN = {r=1,g=0.8,b=0}, {r=1,g=1,b=1}, {r=0,g=1,b=0}
-local EaseOut = function(p) return 1 - (1 - p)^2 end  -- cubic ease-out
+local EaseOut = function(p) return 1 - (1 - p)^2 end
 
 local STAT_ROW_HEIGHT, STAT_ROW_WIDTH, STAT_FONT_SIZE = 25, 300, 11
 local UNLOCK_ROW_HEIGHT, UNLOCK_ROW_WIDTH, UNLOCK_FONT_SIZE = 30, 300, 11
 local UNLOCK_ICON_SIZE, UNLOCK_GAP, UNLOCK_ROW_SPACING, UNLOCK_ROWS_PER_PAGE = 20, 6, 30, 6
 
-local unlockState = { page = 1, total = 1, data = {} }  -- pagination state
+local unlockState = { page = 1, total = 1, data = {} }
 
 local STAT_DEFS = {
     { key = "str", name = "Strength",  index = 1 },
@@ -23,7 +23,7 @@ local STAT_DEFS = {
     { key = "spi", name = "Spirit",    index = 5 },
 }
 
--- Pre‑level snapshot (updated every 0.1s)
+-- Pre‑level snapshot (unchanged)
 local preLevelStats, preLevelHealth = {}, 0
 local snapshotTimer = CreateFrame("Frame")
 local nextSnapshot = 0
@@ -37,11 +37,7 @@ snapshotTimer:SetScript("OnUpdate", function()
 end)
 snapshotTimer:Show()
 
---[[-----------------------------------------------------------------------------
-    2. Trainer scanner (persistent)
-     – Scans class trainer services and stores skill name + icon per level.
-     – Prevents duplicates by checking existing entries.
-------------------------------------------------------------------------------]]
+-- Trainer scanner (unchanged)
 local _, playerClass = UnitClass("player")
 if not NextLevel_TrainerDB then NextLevel_TrainerDB = {} end
 
@@ -74,52 +70,53 @@ local function ScanTrainer()
 end
 
 --[[-----------------------------------------------------------------------------
-    3. Animation system
-     – Manual counter for animations (avoids table.getn).
-     – StartAnimation, Animate, Delay helpers.
+    3. Animation system (reverted to original working version)
 ------------------------------------------------------------------------------]]
-local animations, animCount, animFrame = {}, 0, CreateFrame("Frame")
+local animations = {}
+local animFrame = CreateFrame("Frame")
 animFrame:Hide()
 animFrame:SetScript("OnUpdate", function()
     local now = GetTime()
-    local i = 1
-    while i <= animCount do
+    for i = tlen(animations), 1, -1 do
         local a = animations[i]
         if now >= a.endTime then
             a.func(1)
+            tremove(animations, i)
             if a.complete then a.complete() end
-            animations[i] = animations[animCount]  -- move last to current slot
-            animations[animCount] = nil
-            animCount = animCount - 1
         else
-            a.func((now - a.startTime)/a.duration)
-            i = i + 1
+            a.func((now - a.startTime) / a.duration)
         end
     end
-    if animCount == 0 then animFrame:Hide() end
+    if tlen(animations) == 0 then animFrame:Hide() end
 end)
 
-local function StartAnimation(dur, func, complete)
-    if animCount == 0 then animFrame:Show() end
+local function StartAnimation(duration, updateFunc, completeFunc)
+    if tlen(animations) >= 50 then return end
+    if tlen(animations) == 0 then animFrame:Show() end
     local now = GetTime()
-    animCount = animCount + 1
-    animations[animCount] = { startTime=now, endTime=now+dur, duration=dur, func=func, complete=complete }
+    tinsert(animations, {
+        startTime = now,
+        endTime = now + duration,
+        duration = duration,
+        func = updateFunc,
+        complete = completeFunc
+    })
 end
 
-local function StopAllAnimations() animations={}; animCount=0; animFrame:Hide() end
+local function StopAllAnimations()
+    animations = {}
+    animFrame:Hide()
+end
 
 local noop = function() end
-local function Delay(t, func) StartAnimation(t, noop, func) end  -- delay with no update
+local function Delay(t, func) StartAnimation(t, noop, func) end
 local function Animate(dur, update, done) StartAnimation(dur, update, done) end
 
--- Helpers for setting two frames at once (common in banner animations)
 local function SetWidth2(f1, f2, w) f1:SetWidth(w); f2:SetWidth(w) end
 local function SetAlpha2(f1, f2, a) f1:SetAlpha(a); f2:SetAlpha(a) end
 
 --[[-----------------------------------------------------------------------------
-    4. THEME SYSTEM
-     – Centralized colors, font, and gradient creation.
-     – SplitGradient creates left/right halves with optional top/bottom offsets.
+    4. THEME SYSTEM (unchanged)
 ------------------------------------------------------------------------------]]
 local THEME = {}
 THEME.colors = { backdrop={r=0,g=0,b=0,a=0.7}, border={r=1,g=0.95,b=0.7}, statBorder={r=0.6,g=0.6,b=0.6} }
@@ -157,7 +154,6 @@ function THEME:CreateStyledFrame(parent,w,h,borderColor,thick)
     return f
 end
 
--- Font and texture factories (simplify creation)
 local function CreateFont(parent, size, point, relTo, relPoint, x, y)
     local f = parent:CreateFontString(nil, "OVERLAY")
     f:SetFont(THEME.font, size)
@@ -173,7 +169,7 @@ local function CreateTexture(parent, w, h, point, relTo, relPoint, x, y)
 end
 
 --[[-----------------------------------------------------------------------------
-    5. UI creation (main banner)
+    5. UI creation (unchanged)
 ------------------------------------------------------------------------------]]
 local container = CreateFrame("Frame", nil, UIParent)
 container:SetWidth(350); container:SetHeight(60)
@@ -189,7 +185,6 @@ backdropFrame:SetPoint("BOTTOM", container, "BOTTOM", 0, 0)
 backdropFrame:SetFrameLevel(1)
 THEME:ApplyBackdrop(backdropFrame)
 
--- Thin top/bottom borders
 local topBorderFrame = CreateFrame("Frame", nil, borderFrame)
 topBorderFrame:SetPoint("CENTER", borderFrame, "CENTER", 0, borderFrame:GetHeight()/2 - 0.5)
 topBorderFrame:SetWidth(0); topBorderFrame:SetHeight(0.5); topBorderFrame:SetFrameLevel(3)
@@ -210,14 +205,12 @@ local levelText = textFrame:CreateFontString(nil, "OVERLAY")
 levelText:SetPoint("BOTTOM", textFrame, "BOTTOM", 0, 10)
 levelText:SetFont(THEME.font, 20)
 
--- Shimmer effect (gold beam sweeping)
 local shimmerFrame = CreateFrame("Frame", nil, container)
 shimmerFrame:SetFrameLevel(textFrame:GetFrameLevel() + 10); shimmerFrame:Hide()
 local beamWidth, centerWidth = 200, 10
 local beamHeight = container:GetHeight() or 60
 local edgeWidth = (beamWidth - centerWidth) / 2
 shimmerFrame:SetWidth(beamWidth); shimmerFrame:SetHeight(beamHeight)
-
 if edgeWidth > 0 then
     local left = CreateGradient(shimmerFrame, 1,0.8,0, 0,0.3)
     left:SetWidth(edgeWidth); left:SetHeight(beamHeight)
@@ -233,14 +226,11 @@ if edgeWidth > 0 then
     right:SetPoint("LEFT", shimmerFrame, "LEFT", edgeWidth + centerWidth, 0)
 end
 
--- Row containers (positioned below banner text)
 local statRowsContainer = CreateFrame("Frame", nil, textFrame); statRowsContainer:Hide()
 local unlockRowsContainer = CreateFrame("Frame", nil, textFrame); unlockRowsContainer:Hide()
 
 --[[-----------------------------------------------------------------------------
-    6. Row pools & factories (generic)
-     – Reusable rows to avoid recreation.
-     – CreateStatRow / CreateUnlockRow build once, then reused.
+    6. Row pools & factories (unchanged)
 ------------------------------------------------------------------------------]]
 local statRowPool, unlockRowPool = {}, {}
 local statRowFrames, unlockRowFrames = {}, {}
@@ -286,7 +276,6 @@ local function ResetStatRow(row)
     row.oldValueText:SetText("")
     row.newValueText:SetText("")
     row.gainText:SetText("")
-    -- Reset font and color in case the pop animation left them modified
     row.newValueText:SetFont(THEME.font, STAT_FONT_SIZE)
     row.newValueText:SetTextColor(1,1,1)
 end
@@ -305,8 +294,7 @@ local function ReleaseAllRows()
 end
 
 --[[-----------------------------------------------------------------------------
-    7. Generic row reveal
-     – Reveals rows sequentially with a custom animation function and delay.
+    7. Row reveal (unchanged)
 ------------------------------------------------------------------------------]]
 local function RevealRows(rows, animateFunc, delayBetween, onDone)
     local function step(i)
@@ -323,8 +311,7 @@ local function RevealRows(rows, animateFunc, delayBetween, onDone)
 end
 
 --[[-----------------------------------------------------------------------------
-    8. Animation sequences
-     – Banner appearance, shimmer, fade, stat row animation, unlock row animation.
+    8. Animation sequences (unchanged except the functions themselves use StartAnimation)
 ------------------------------------------------------------------------------]]
 local function PlayMainBannerAnimation(cb)
     SetWidth2(topBorderFrame, bottomBorderFrame, 0)
@@ -371,38 +358,46 @@ local function StartFade()
     end)
 end
 
--- Main stat row animation: fade + slide in, arrow slide, new value slide & count
+-- Row animations (safe version using ClearAllPoints)
 local function AnimateRowAppear(row, dur, onDone)
     row:SetAlpha(0)
-    local point, relativeTo, relativePoint, x, y = row:GetPoint()
-    local startY = y - 10
-    local p, rt, rp = point, relativeTo, relativePoint
-    row:SetPoint(p, rt, rp, x, startY)
+    local _, _, _, _, origY = row:GetPoint()
+    if not origY then origY = 0 end
+    local startY = origY + 10
+    row:ClearAllPoints()
+    row:SetPoint("TOP", statRowsContainer, "TOP", 0, startY)
 
     Animate(dur, function(t)
         local e = EaseOut(t)
         row:SetAlpha(e)
-        row:SetPoint(p, rt, rp, x, startY + 10*e)
+        local y = startY - 10*e
+        row:ClearAllPoints()
+        row:SetPoint("TOP", statRowsContainer, "TOP", 0, y)
     end, function()
-        row:SetPoint(p, rt, rp, x, y)
+        row:ClearAllPoints()
+        row:SetPoint("TOP", statRowsContainer, "TOP", 0, origY)
 
         local arrow = row.arrowTexture
         local newVal = row.newValueText
         local oldVal, newValNum = row.oldValue, row.newValue
 
-        -- Arrow slide
         arrow:SetAlpha(0)
         local lastArrowX
         Animate(0.5, function(t)
             local e = EaseOut(t)
             local xPos = 159 + (164 - 159)*e
-            if xPos ~= lastArrowX then arrow:SetPoint("LEFT", row, "LEFT", xPos, 0); lastArrowX = xPos end
+            if xPos ~= lastArrowX then
+                arrow:ClearAllPoints()
+                arrow:SetPoint("LEFT", row, "LEFT", xPos, 0)
+                lastArrowX = xPos
+            end
             arrow:SetAlpha(e^0.7)
         end, function()
-            arrow:SetPoint("LEFT", row, "LEFT", 164, 0); arrow:SetAlpha(1)
+            arrow:ClearAllPoints()
+            arrow:SetPoint("LEFT", row, "LEFT", 164, 0)
+            arrow:SetAlpha(1)
         end)
 
-        -- Stat slide & counting (start after a short delay)
         Delay(0.1, function()
             newVal:SetText(oldVal)
             newVal:SetAlpha(0)
@@ -410,10 +405,16 @@ local function AnimateRowAppear(row, dur, onDone)
             Animate(0.8, function(t)
                 local e = EaseOut(t)
                 local xPos = 170 + (180 - 170)*e
-                if xPos ~= lastNewX then newVal:SetPoint("LEFT", row, "LEFT", xPos, 0); lastNewX = xPos end
+                if xPos ~= lastNewX then
+                    newVal:ClearAllPoints()
+                    newVal:SetPoint("LEFT", row, "LEFT", xPos, 0)
+                    lastNewX = xPos
+                end
                 newVal:SetAlpha(e^0.7)
             end, function()
-                newVal:SetPoint("LEFT", row, "LEFT", 180, 0); newVal:SetAlpha(1)
+                newVal:ClearAllPoints()
+                newVal:SetPoint("LEFT", row, "LEFT", 180, 0)
+                newVal:SetAlpha(1)
             end)
             Animate(0.8, function(t)
                 newVal:SetText(math_floor(oldVal + (newValNum - oldVal)*t))
@@ -436,7 +437,6 @@ local function AnimateRowAppear(row, dur, onDone)
     end)
 end
 
--- Green gain text pop
 local function AnimateGainText(row, cb)
     local gain = row.gainText
     gain:SetAlpha(0)
@@ -456,23 +456,28 @@ local function AnimateGainText(row, cb)
     end)
 end
 
--- Unlock row animation (icon slides in, text fades in)
 local function AnimateUnlockRow(row, dur, cb)
     local icon, line1, line2 = row.icon, row.line1, row.line2
     if not icon then return AnimateRowAppear(row, dur, cb) end
     icon:SetAlpha(0); line1:SetAlpha(0); line2:SetAlpha(0)
     local startX = -20
     local lastIconX
+    icon:ClearAllPoints()
     icon:SetPoint("LEFT", row, "LEFT", 10 + startX, 0)
     StartAnimation(dur, function(p)
         local e = EaseOut(p)
         row:SetAlpha(e)
         icon:SetAlpha(e)
         local newX = 10 + startX + (-startX*e)
-        if newX ~= lastIconX then icon:SetPoint("LEFT", row, "LEFT", newX, 0); lastIconX = newX end
+        if newX ~= lastIconX then
+            icon:ClearAllPoints()
+            icon:SetPoint("LEFT", row, "LEFT", newX, 0)
+            lastIconX = newX
+        end
         local t = math_max(0, p-0.25)/0.75
         line1:SetAlpha(t); line2:SetAlpha(t)
     end, function()
+        icon:ClearAllPoints()
         icon:SetPoint("LEFT", row, "LEFT", 10, 0)
         line1:SetAlpha(1); line2:SetAlpha(1)
         if cb then cb() end
@@ -488,6 +493,7 @@ function BuildUnlockPage(page)
         local d = unlockState.data[i]
         local row = GetUnlockRow()
         row:SetParent(unlockRowsContainer)
+        row:ClearAllPoints()
         row:SetPoint("TOP", unlockRowsContainer, "TOP", 0, -(i-start)*UNLOCK_ROW_SPACING)
         row:SetFrameLevel(textFrame:GetFrameLevel()+2)
         row:Hide()
@@ -538,7 +544,6 @@ end
 
 --[[-----------------------------------------------------------------------------
     9. Main entry & event handling
-     – ShowLevelUp builds stat rows and unlock data, triggers animations.
 ------------------------------------------------------------------------------]]
 local function ShowLevelUp(level, oldHealth, fakeGains, oldStatsSnapshot, attempt)
     attempt = attempt or 0
@@ -591,6 +596,7 @@ local function ShowLevelUp(level, oldHealth, fakeGains, oldStatsSnapshot, attemp
     for i, d in ipairs(statData) do
         local row = GetStatRow()
         row:SetParent(statRowsContainer)
+        row:ClearAllPoints()
         row:SetPoint("TOP", statRowsContainer, "TOP", 0, -(i-1)*(STAT_ROW_HEIGHT+2))
         row:SetFrameLevel(textFrame:GetFrameLevel()+2)
         row:Hide()
@@ -606,7 +612,7 @@ local function ShowLevelUp(level, oldHealth, fakeGains, oldStatsSnapshot, attemp
     end
     statRowsContainer:Show()
 
-    -- Build unlock data (talent point, skills)
+    -- Build unlock data
     unlockState.data = {}
     if level >= 10 and level <= 60 then
         tinsert(unlockState.data, { icon="Interface\\Icons\\INV_Misc_Book_08", line1="|cFF00FF00Your power increased!|r", line2="|cFFFFD700New Talent Point available|r" })
@@ -629,13 +635,15 @@ local function ShowLevelUp(level, oldHealth, fakeGains, oldStatsSnapshot, attemp
 
     container:Show()
 
-    -- Start stat row animations, then unlock section
+    -- Start animations
     if tlen(statData) > 0 then
         local totalRows = tlen(statData)
         local gainsDone = 0
         local function onGain()
             gainsDone = gainsDone + 1
-            if gainsDone == totalRows then Delay(4.0, ShowUnlockSection) end
+            if gainsDone == totalRows then
+                Delay(4.0, ShowUnlockSection)
+            end
         end
         PlayMainBannerAnimation(function()
             Delay(0.5, function()
@@ -653,7 +661,7 @@ local function ShowLevelUp(level, oldHealth, fakeGains, oldStatsSnapshot, attemp
     end
 end
 
--- Event frame – listen for level‑up and trainer window
+-- Event handling
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_LEVEL_UP")
 eventFrame:RegisterEvent("TRAINER_SHOW")
@@ -662,13 +670,15 @@ eventFrame:SetScript("OnEvent", function()
         local level = arg1
         local oldStats = {}
         for _, s in ipairs(STAT_DEFS) do oldStats[s.key] = preLevelStats[s.key] or 0 end
-        Delay(0.5, function() ShowLevelUp(level, preLevelHealth, nil, oldStats) end)
+        local oldHealth = preLevelHealth
+        snapshotTimer:Hide()
+        ShowLevelUp(level, oldHealth, nil, oldStats)
     elseif event == "TRAINER_SHOW" then
         ScanTrainer()
     end
 end)
 
--- Slash command for testing and resetting
+-- Slash command
 SLASH_NEXTLEVEL1 = "/nextlevel"
 SlashCmdList["NEXTLEVEL"] = function(msg)
     if msg then
@@ -683,4 +693,4 @@ SlashCmdList["NEXTLEVEL"] = function(msg)
     end
 end
 
-print("|cFF00FF00NextLevel|r loaded successfully. Use /nextlevel [level] to test, or /nextlevel reset to reset trainer data.|r")
+print("|cFF00FF00NextLevel|r loaded successfully. Use /nextlevel [level] to test, or /nextlevel reset to reset trainer data.")
