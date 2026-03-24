@@ -14,7 +14,7 @@ A World of Warcraft (1.12 / Turtle WoW) addon that celebrates your level-ups wit
 
 ## Installation
 
-1. Download the latest release from [GitHub Releases](https://github.com/Misa5919/NextLevel).
+1. Download the latest release from [GitHub](https://github.com/Misa5919/NextLevel).
 2. Extract the folder into your `World of Warcraft/Interface/AddOns/` directory.
 3. Make sure the folder is named exactly `NextLevel`.
 4. Launch the game and enable the addon in the character selection screen.
