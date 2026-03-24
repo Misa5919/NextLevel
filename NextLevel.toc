@@ -1,6 +1,7 @@
 ## Interface: 11200
 ## Title: |cFFFFD700Next|rLevel
 ## Notes: Improved Level-up for some dopamine hits.
+## Version: 1.0
 ## SavedVariables: NextLevel_TrainerDB
 
 NextLevel.lua
